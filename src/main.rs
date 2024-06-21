@@ -42,25 +42,28 @@ impl Walker {
         }
     }
     pub fn step(&mut self) {
-        loop {
-            let x_step = rand::gen_range(0, 3) - 1;
-            let y_step = rand::gen_range(0, 3) - 1;
+        let directions = vec![(-1.0, 0.0), (1.0, 0.0), (0.0, -1.0), (0.0, 1.0)];
 
-            let new_x = self.x + x_step as f32 * self.stride;
-            let new_y = self.y + y_step as f32 * self.stride;
+        let valid_steps = directions
+            .iter()
+            .filter(|&&(dx, dy)| {
+                let new_x = self.x + dx * self.stride;
+                let new_y = self.y + dy * self.stride;
+                new_x >= 0.0 && new_x < screen_width() && new_y >= 0.0 && new_y < screen_height()
+            })
+            .collect::<Vec<_>>();
 
-            if new_x < 0.0
-                || new_x > screen_width()
-                || new_y < 0.0
-                || new_y > screen_height()
-                || self.previous_steps.contains(&(new_x, new_y))
-            {
-                continue;
-            }
-            self.x = new_x;
-            self.y = new_y;
+        if valid_steps.is_empty() {
+            // No valid moves available, handle as needed.
+            println!("Walker is stuck, reinitializing position");
+            self.x = screen_width() / 2.0;
+            self.y = screen_height() / 2.0;
+            self.previous_steps.clear();
+        } else {
+            let (dx, dy) = valid_steps[rand::gen_range(0, valid_steps.len())];
+            self.x += dx * self.stride;
+            self.y += dy * self.stride;
             self.previous_steps.push((self.x, self.y));
-            break;
         }
     }
 }
