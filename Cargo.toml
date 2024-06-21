@@ -1,0 +1,17 @@
+[package]
+name = "quad-sketch"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+src = "lib.rs"
+name = "quad_sketch"
+
+[[bin]]
+path = "src/main.rs"
+name = "quad_sketch"
+
+[dependencies]
+macroquad = "0.4.6"
