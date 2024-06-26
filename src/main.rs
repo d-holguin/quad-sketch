@@ -11,20 +11,74 @@ fn config() -> Conf {
 
 #[macroquad::main(config)]
 async fn main() {
-    let mut walker = Walker::new();
-    let walker_size = walker.stride;
     loop {
         clear_background(WHITE);
+        let grid = Grid::new(10, 10);
+        grid.draw();
 
-        walker.step();
-        for step in &walker.previous_steps {
-            draw_rectangle(step.0, step.1, walker_size, walker_size, BLACK)
-        }
+        let player = grid.grid_to_screen(5.0, 5.0);
+        draw_circle(player.x, player.y, 0.5 * grid.scale_x, RED);
+
 
         next_frame().await;
     }
 }
 
+struct Grid {
+    rows: i32,
+    cols: i32,
+    scale_x: f32,
+    scale_y: f32,
+}
+
+
+impl Grid {
+    fn new(rows: i32, cols: i32) -> Self {
+        let screen_w = screen_width();
+        let screen_h = screen_height();
+        let scale_x = screen_w / cols as f32;
+        let scale_y = screen_h / rows as f32;
+        Self {
+            rows,
+            cols,
+            scale_x,
+            scale_y,
+        }
+    }
+    fn draw(&self) {
+        //draw vertical lines
+        for x in 0..=self.cols {
+            let x_pos = x as f32 * self.scale_x;
+            draw_line(x_pos, 0.0, x_pos, screen_height(), 1.0, BLACK);
+        }
+        for y in 0..=self.rows {
+            let y_pos = y as f32 * self.scale_y;
+            draw_line(0.0, y_pos, screen_width(), y_pos, 1.0, BLACK);
+        }
+    }
+    fn grid_to_screen(&self, grid_x: f32, grid_y: f32) -> Vec2 {
+        vec2(grid_x * self.scale_x, grid_y * self.scale_y)
+    }
+}
+
+
+fn draw_grid(rows: i32, cols: i32) {
+    let screen_height = screen_height();
+    let screen_width = screen_width();
+    let scale_x = screen_width / cols as f32;
+    let scale_y = screen_height / rows as f32;
+    for x in 0..=rows {
+        let x_pos = x as f32 * scale_x;
+        draw_line(x_pos, 0.0, x_pos, screen_height, 1.0, BLACK);
+    }
+    for y in 0..=cols {
+        let y_pos = y as f32 * scale_y;
+        draw_line(0.0, y_pos, screen_width, y_pos, 1.0, BLACK);
+    }
+    let center = vec2(5.0 * scale_x, 5.0 * scale_y);
+
+    draw_circle(center.x, center.y, 0.5 * scale_x, RED);
+}
 pub struct Walker {
     x: f32,
     y: f32,
@@ -37,7 +91,7 @@ impl Walker {
         Self {
             x: screen_width() / 2.0,
             y: screen_height() / 2.0,
-            stride: 1.0,
+            stride: 50.0,
             previous_steps: Vec::new(),
         }
     }
@@ -54,7 +108,6 @@ impl Walker {
             .collect::<Vec<_>>();
 
         if valid_steps.is_empty() {
-            // No valid moves available, handle as needed.
             println!("Walker is stuck, reinitializing position");
             self.x = screen_width() / 2.0;
             self.y = screen_height() / 2.0;
