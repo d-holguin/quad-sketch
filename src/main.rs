@@ -11,21 +11,16 @@ fn config() -> Conf {
 
 #[macroquad::main(config)]
 async fn main() {
-
+    let grid = Grid::new(10, 10);
     loop {
-        let grid = Grid::new(10, 10);
         clear_background(WHITE);
-
         grid.draw();
-
         let point1 = grid.grid_to_screen(5.0, 5.0);
         let (mouse_x, mouse_y) = mouse_position();
         let point2 = vec2(mouse_x, mouse_y);
         draw_circle(point1.x, point1.y, 0.1 * grid.scale_x(), RED);
         draw_circle(point2.x, point2.y, 0.1 * grid.scale_x(), RED);
         draw_line(point1.x, point1.y, point2.x, point2.y, 1.0, RED);
-
-
         next_frame().await;
     }
 }
@@ -129,19 +124,4 @@ impl Walker {
     }
 }
 
-fn _create_checkerboard() {
-    let rows = 100;
-    let cols = 100;
 
-    let cell_width = screen_width() / cols as f32;
-    let cell_height = screen_height() / rows as f32;
-
-    for i in 0..rows {
-        for j in 0..cols {
-            let x = j as f32 * cell_width;
-            let y = i as f32 * cell_height;
-            let color = if (i + j) % 2 == 0 { BLACK } else { WHITE };
-            draw_rectangle(x, y, cell_width, cell_height, color);
-        }
-    }
-}
