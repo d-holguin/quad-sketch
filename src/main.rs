@@ -11,54 +11,53 @@ fn config() -> Conf {
 
 #[macroquad::main(config)]
 async fn main() {
+    let grid = Grid::new(10, 10);
     loop {
         clear_background(WHITE);
-        let grid = Grid::new(10, 10);
+
         grid.draw();
 
         let player = grid.grid_to_screen(5.0, 5.0);
-        draw_circle(player.x, player.y, 0.5 * grid.scale_x, RED);
+        draw_circle(player.x, player.y, 0.25 * grid.scale, RED);
 
 
         next_frame().await;
     }
 }
 
-struct Grid {
-    rows: i32,
-    cols: i32,
-    scale_x: f32,
-    scale_y: f32,
-}
-
-
 impl Grid {
     fn new(rows: i32, cols: i32) -> Self {
-        let screen_w = screen_width();
-        let screen_h = screen_height();
-        let scale_x = screen_w / cols as f32;
-        let scale_y = screen_h / rows as f32;
+        let scale_x = screen_width() / cols as f32;
+        let scale_y = screen_height() / rows as f32;
+        let scale = scale_x.min(scale_y);
         Self {
             rows,
             cols,
-            scale_x,
-            scale_y,
+            scale,
         }
     }
     fn draw(&self) {
         //draw vertical lines
         for x in 0..=self.cols {
-            let x_pos = x as f32 * self.scale_x;
+            let x_pos = x as f32 * self.scale;
             draw_line(x_pos, 0.0, x_pos, screen_height(), 1.0, BLACK);
         }
+        // draw horizontal lines
         for y in 0..=self.rows {
-            let y_pos = y as f32 * self.scale_y;
+            let y_pos = y as f32 * self.scale;
             draw_line(0.0, y_pos, screen_width(), y_pos, 1.0, BLACK);
         }
     }
     fn grid_to_screen(&self, grid_x: f32, grid_y: f32) -> Vec2 {
-        vec2(grid_x * self.scale_x, grid_y * self.scale_y)
+        vec2(grid_x * self.scale, grid_y * self.scale)
     }
+}
+
+
+struct Grid {
+    rows: i32,
+    cols: i32,
+    scale: f32,
 }
 
 
