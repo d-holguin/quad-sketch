@@ -18,8 +18,12 @@ async fn main() {
 
         grid.draw();
 
-        let player = grid.grid_to_screen(5.0, 5.0);
-        draw_circle(player.x, player.y, 0.25 * grid.scale_x(), RED);
+        let point1 = grid.grid_to_screen(5.0, 5.0);
+        let (mouse_x, mouse_y) = mouse_position();
+        let point2 = vec2(mouse_x, mouse_y);
+        draw_circle(point1.x, point1.y, 0.1 * grid.scale_x(), RED);
+        draw_circle(point2.x, point2.y, 0.1 * grid.scale_x(), RED);
+        draw_line(point1.x, point1.y, point2.x, point2.y, 1.0, RED);
 
 
         next_frame().await;
