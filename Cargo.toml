@@ -7,11 +7,11 @@ edition = "2021"
 
 [lib]
 src = "lib.rs"
-name = "quad_sketch"
+name = "quad_sketch_core"
 
 [[bin]]
 path = "src/main.rs"
 name = "quad_sketch"
 
 [dependencies]
-macroquad = "0.4.6"
+macroquad = "0.4.13"
