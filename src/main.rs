@@ -13,21 +13,18 @@ async fn main() {
 
     let grid = Grid::new(50, 50);
 
-    let mut cells: Vec<Cell> = Vec::with_capacity((grid.rows * grid.cols) as usize);
-
-    for cell in cells {
-
-    }
+   let cells = create_cells(grid.rows, grid.cols);
 
     loop {
-        clear_background(RED);
+        clear_background(WHITE);
         grid.draw();
 
-
-
-        for i in 0..=49 {
-            for j in 0..=49 {
-                grid.fill_cell(i, j);
+        for row in 0..grid.rows {
+            for col in 0..grid.cols {
+                let idx = (row * grid.cols) + col;
+                if cells.get(idx).unwrap().alive {
+                    grid.fill_cell(row as i32, col as i32);
+                }
             }
         }
 
@@ -37,17 +34,18 @@ async fn main() {
 }
 
 struct Grid {
-    rows: i32,
-    cols: i32,
+    rows: usize,
+    cols: usize,
     cell_size_x: f32,
     cell_size_y: f32,
 }
 
 
 impl Grid {
-    const LINE_WIDTH: f32 = 1.0;
+    const LINE_WIDTH: f32 = 2.0;
+    const GRID_COLOR: Color = Color::new(0.0, 0.0, 0.0, 0.3);
 
-    fn new(rows: i32, cols: i32) -> Self {
+    fn new(rows: usize, cols: usize) -> Self {
         let screen_width = screen_width() - Self::LINE_WIDTH;
         let screen_height = screen_height() - UI_OFFSET as f32 - Self::LINE_WIDTH;
 
@@ -76,7 +74,7 @@ impl Grid {
                 x_pos,
                 max_y,
                 Grid::LINE_WIDTH,
-                LIGHTGRAY,
+                Grid::GRID_COLOR,
             );
         }
 
@@ -89,7 +87,7 @@ impl Grid {
                 max_x,
                 y_pos,
                 Grid::LINE_WIDTH,
-                LIGHTGRAY,
+                Grid::GRID_COLOR,
             );
         }
     }
@@ -111,4 +109,16 @@ impl Grid {
             BLACK,
         );
     }
+}
+
+
+fn create_cells(rows: usize, cols: usize) -> Vec<Cell> {
+    let mut cells = Vec::with_capacity(rows * cols);
+
+    for _ in 0..(rows * cols) {
+        let alive: bool = rand::gen_range(0, 2) == 0;
+        cells.push(Cell { alive });
+    }
+
+    cells
 }
