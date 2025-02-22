@@ -1,0 +1,1 @@
+https://beltoforion.de/en/game_of_life/

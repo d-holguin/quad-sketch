@@ -3,13 +3,27 @@ use quad_sketch_core::config;
 
 const UI_OFFSET: f64 = 200.0;
 
+pub struct Cell {
+    alive: bool,
+}
+
 #[macroquad::main(config)]
 async fn main() {
+    rand::srand(miniquad::date::now() as u64);
+
     let grid = Grid::new(50, 50);
+
+    let mut cells: Vec<Cell> = Vec::with_capacity((grid.rows * grid.cols) as usize);
+
+    for cell in cells {
+
+    }
 
     loop {
         clear_background(RED);
         grid.draw();
+
+
 
         for i in 0..=49 {
             for j in 0..=49 {
@@ -31,7 +45,7 @@ struct Grid {
 
 
 impl Grid {
-    const LINE_WIDTH: f32 = 0.5;
+    const LINE_WIDTH: f32 = 1.0;
 
     fn new(rows: i32, cols: i32) -> Self {
         let screen_width = screen_width() - Self::LINE_WIDTH;
