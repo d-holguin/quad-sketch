@@ -6,7 +6,7 @@ use quad_sketch_core::config;
 const UI_OFFSET: f64 = 200.0;
 const BUTTON_WIDTH: f32 = 150.0;
 const BUTTON_HEIGHT: f32 = 50.0;
-const UPDATES_PER_SECOND: f64 = 5.0;
+const UPDATES_PER_SECOND: f64 = 10.0;
 const TIME_STEP: f64 = 1.0 / UPDATES_PER_SECOND;
 
 #[derive(Clone)]
@@ -18,7 +18,7 @@ pub struct Cell {
 async fn main() {
     rand::srand(miniquad::date::now() as u64);
 
-    let grid = Grid::new(100, 100);
+    let grid = Grid::new(50, 50);
 
     let mut cells = create_cells(grid.rows, grid.cols);
     let mut next_cells = cells.clone();
@@ -43,7 +43,7 @@ async fn main() {
 
         let current_time = get_time();
         if current_time - last_update_time > TIME_STEP {
-          //  update_cells(&mut cells, &mut next_cells, grid.rows, grid.cols);
+            update_cells(&mut cells, &mut next_cells, grid.rows, grid.cols);
             last_update_time = current_time;
         }
 
@@ -51,8 +51,8 @@ async fn main() {
         root_ui().window(hash!(), vec2(0.0, ui_y), vec2(screen_w, UI_OFFSET as f32), |ui| {
             ui.label(vec2(screen_w / 2.0, 5.0), "Game of Life");
 
-            if ui.button(Some(vec2(20.0, 40.0)), "Step") {
-                update_cells(&mut cells, &mut next_cells, grid.rows, grid.cols);
+            if ui.button(Some(vec2(20.0, 40.0)), "Reset") {
+                reset_cells(&mut cells, &mut next_cells, grid.rows, grid.cols);
             }
         });
 
@@ -63,9 +63,10 @@ async fn main() {
     }
 }
 
-fn is_mouse_over(x: f32, y: f32, width: f32, height: f32) -> bool {
-    let (mouse_x, mouse_y) = mouse_position();
-    mouse_x >= x && mouse_x <= x + width && mouse_y >= y && mouse_y <= y + height
+fn reset_cells(cells: &mut Vec<Cell>, next_cells: &mut Vec<Cell>, rows: usize, cols: usize) {
+    let new_cells = create_cells(rows, cols);
+    *cells = new_cells.clone();
+    *next_cells = new_cells;
 }
 
 struct Grid {
@@ -78,7 +79,7 @@ struct Grid {
 
 impl Grid {
     const LINE_WIDTH: f32 = 1.0;
-    const GRID_COLOR: Color = Color::new(0.9, 0.9, 0.9, 0.3);
+    const GRID_COLOR: Color = WHITE;
 
     const CELL_COLOR: Color = GREEN;
 
