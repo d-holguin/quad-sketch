@@ -1,8 +1,15 @@
+use macroquad::hash;
 use macroquad::prelude::*;
+use macroquad::ui::{root_ui, widgets};
 use quad_sketch_core::config;
 
 const UI_OFFSET: f64 = 200.0;
+const BUTTON_WIDTH: f32 = 150.0;
+const BUTTON_HEIGHT: f32 = 50.0;
+const UPDATES_PER_SECOND: f64 = 5.0;
+const TIME_STEP: f64 = 1.0 / UPDATES_PER_SECOND;
 
+#[derive(Clone)]
 pub struct Cell {
     alive: bool,
 }
@@ -11,26 +18,54 @@ pub struct Cell {
 async fn main() {
     rand::srand(miniquad::date::now() as u64);
 
-    let grid = Grid::new(50, 50);
+    let grid = Grid::new(100, 100);
 
-   let cells = create_cells(grid.rows, grid.cols);
+    let mut cells = create_cells(grid.rows, grid.cols);
+    let mut next_cells = cells.clone();
+
+    let mut last_update_time = get_time();
+
+    let screen_h = screen_height();
+    let screen_w = screen_width();
 
     loop {
-        clear_background(WHITE);
+        clear_background(BLACK);
         grid.draw();
 
         for row in 0..grid.rows {
             for col in 0..grid.cols {
                 let idx = (row * grid.cols) + col;
-                if cells.get(idx).unwrap().alive {
+                if cells[idx].alive {
                     grid.fill_cell(row as i32, col as i32);
                 }
             }
         }
 
+        let current_time = get_time();
+        if current_time - last_update_time > TIME_STEP {
+          //  update_cells(&mut cells, &mut next_cells, grid.rows, grid.cols);
+            last_update_time = current_time;
+        }
+
+        let ui_y = screen_h - UI_OFFSET as f32;
+        root_ui().window(hash!(), vec2(0.0, ui_y), vec2(screen_w, UI_OFFSET as f32), |ui| {
+            ui.label(vec2(screen_w / 2.0, 5.0), "Game of Life");
+
+            if ui.button(Some(vec2(20.0, 40.0)), "Step") {
+                update_cells(&mut cells, &mut next_cells, grid.rows, grid.cols);
+            }
+        });
+
+
+
 
         next_frame().await;
     }
+}
+
+fn is_mouse_over(x: f32, y: f32, width: f32, height: f32) -> bool {
+    let (mouse_x, mouse_y) = mouse_position();
+    mouse_x >= x && mouse_x <= x + width && mouse_y >= y && mouse_y <= y + height
 }
 
 struct Grid {
@@ -42,8 +77,11 @@ struct Grid {
 
 
 impl Grid {
-    const LINE_WIDTH: f32 = 2.0;
-    const GRID_COLOR: Color = Color::new(0.0, 0.0, 0.0, 0.3);
+    const LINE_WIDTH: f32 = 1.0;
+    const GRID_COLOR: Color = Color::new(0.9, 0.9, 0.9, 0.3);
+
+    const CELL_COLOR: Color = GREEN;
+
 
     fn new(rows: usize, cols: usize) -> Self {
         let screen_width = screen_width() - Self::LINE_WIDTH;
@@ -106,7 +144,7 @@ impl Grid {
             screen_coords.y + Grid::LINE_WIDTH,
             self.cell_size_x - Grid::LINE_WIDTH,
             self.cell_size_y - Grid::LINE_WIDTH,
-            BLACK,
+            Self::CELL_COLOR,
         );
     }
 }
@@ -121,4 +159,38 @@ fn create_cells(rows: usize, cols: usize) -> Vec<Cell> {
     }
 
     cells
+}
+
+fn count_alive_neighbors(cells: &Vec<Cell>, row: usize, col: usize, rows: usize, cols: usize) -> usize {
+    let offsets = [
+        (-1, -1), (-1, 0), (-1, 1),
+        (0, -1), /* (this cell) */ (0, 1),
+        (1, -1), (1, 0), (1, 1)
+    ];
+
+    offsets.iter().filter(|&&(dr, dc)| {
+        let nr = row.wrapping_add(dr as usize);
+        let nc = col.wrapping_add(dc as usize);
+        nr < rows && nc < cols && cells[(nr * cols) + nc].alive
+    }).count()
+}
+
+/// A live cell dies if it has fewer than two live neighbors.
+/// A live cell with two or three live neighbors lives on to the next generation.
+/// A live cell with more than three live neighbors dies.
+/// A dead cell will be brought back to live if it has exactly three live neighbors.
+fn update_cells(cells: &mut Vec<Cell>, next_cells: &mut Vec<Cell>, rows: usize, cols: usize) {
+    for row in 0..rows {
+        for col in 0..cols {
+            let alive_neighbors = count_alive_neighbors(cells, row, col, rows, cols);
+            let idx = (row * cols) + col;
+
+            next_cells[idx].alive = match (cells[idx].alive, alive_neighbors) {
+                (true, 2) | (true, 3) => true, // survive
+                (false, 3) => true, // born
+                _ => false, // dies
+            }
+        }
+    }
+    std::mem::swap(cells, next_cells);
 }
