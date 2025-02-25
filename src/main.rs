@@ -2,11 +2,10 @@ use macroquad::hash;
 use macroquad::prelude::*;
 use macroquad::ui::{root_ui, widgets};
 use quad_sketch_core::config;
+use std::cmp;
 
-const UI_OFFSET: f64 = 200.0;
-const BUTTON_WIDTH: f32 = 150.0;
-const BUTTON_HEIGHT: f32 = 50.0;
-const UPDATES_PER_SECOND: f64 = 10.0;
+const UI_OFFSET: f64 = 100.0;
+const UPDATES_PER_SECOND: f64 = 30.0;
 const TIME_STEP: f64 = 1.0 / UPDATES_PER_SECOND;
 
 #[derive(Clone)]
@@ -14,11 +13,20 @@ pub struct Cell {
     alive: bool,
 }
 
+enum GameState {
+    MainMenu,
+    Running,
+}
+
 #[macroquad::main(config)]
 async fn main() {
     rand::srand(miniquad::date::now() as u64);
 
-    let grid = Grid::new(50, 50);
+    let mut game_state = GameState::MainMenu;
+
+    let mut grid_size = 25.0;
+
+    let mut grid = Grid::new(grid_size as usize);
 
     let mut cells = create_cells(grid.rows, grid.cols);
     let mut next_cells = cells.clone();
@@ -28,37 +36,92 @@ async fn main() {
     let screen_h = screen_height();
     let screen_w = screen_width();
 
+    let mut grid_lines = true;
+
+
+
     loop {
         clear_background(BLACK);
-        grid.draw();
 
-        for row in 0..grid.rows {
-            for col in 0..grid.cols {
-                let idx = (row * grid.cols) + col;
-                if cells[idx].alive {
-                    grid.fill_cell(row as i32, col as i32);
+        match game_state {
+            GameState::MainMenu => {
+
+                let ui_w = screen_w * 0.25;
+                let ui_h = screen_h * 0.25;
+                root_ui()
+                    .window(hash!(),
+                            vec2((screen_w / 2.0) - (ui_w / 2.0), (screen_h / 2.0) - (ui_h / 2.0)),
+                            vec2(ui_w, ui_h), |ui| {
+
+
+                            let mut new_grid_size = grid_size;
+                            widgets::Slider::new(hash!(), 25.0..250.0)
+                                .label("Grid Size")
+                                .ui(ui, &mut new_grid_size);
+
+                            grid_size = new_grid_size.round();
+                            let grid_size = grid_size.round();
+
+
+
+                            if ui.button(Some(vec2(0.0, 30.0)), "Submit") {
+                                println!("Grid size: {}", grid_size);
+                                grid = Grid::new(grid_size as usize);
+                                cells = create_cells(grid.rows, grid.cols);
+                                next_cells = cells.clone();
+
+                                game_state = GameState::Running;
+                            }
+
+
+
+
+                });
+
+
+            }
+            GameState::Running => {
+
+                grid.draw();
+                for row in 0..grid.rows {
+                    for col in 0..grid.cols {
+                        let idx = (row * grid.cols) + col;
+                        if cells[idx].alive {
+                            grid.fill_cell(row as i32, col as i32);
+                        }
+                    }
                 }
+
+                let current_time = get_time();
+                if current_time - last_update_time > TIME_STEP {
+                    update_cells(&mut cells, &mut next_cells, grid.rows, grid.cols);
+                    last_update_time = current_time;
+                }
+
+
+                root_ui().window(
+                    hash!(),
+                    vec2(0.0, screen_h - UI_OFFSET as f32),
+                    vec2(screen_w, UI_OFFSET as f32),
+                    |ui| {
+                        widgets::Checkbox::new(hash!())
+                            .label("Show Grid Lines")
+                            .ui(ui, &mut grid_lines);
+
+                        //ui.label(vec2(screen_w / 2.0, 5.0), "Game of Life");
+
+
+                        if ui.button(Some(vec2(0.0, 30.0)), "Reset") {
+                            reset_cells(&mut cells, &mut next_cells, grid.rows, grid.cols);
+                        }
+
+                        if ui.button(Some(vec2(0.0, 60.0)), "Menu") {
+                            game_state = GameState::MainMenu;
+                        }
+
+                    });
             }
         }
-
-        let current_time = get_time();
-        if current_time - last_update_time > TIME_STEP {
-            update_cells(&mut cells, &mut next_cells, grid.rows, grid.cols);
-            last_update_time = current_time;
-        }
-
-        let ui_y = screen_h - UI_OFFSET as f32;
-        root_ui().window(hash!(), vec2(0.0, ui_y), vec2(screen_w, UI_OFFSET as f32), |ui| {
-            ui.label(vec2(screen_w / 2.0, 5.0), "Game of Life");
-
-            if ui.button(Some(vec2(20.0, 40.0)), "Reset") {
-                reset_cells(&mut cells, &mut next_cells, grid.rows, grid.cols);
-            }
-        });
-
-
-
-
         next_frame().await;
     }
 }
@@ -74,19 +137,21 @@ struct Grid {
     cols: usize,
     cell_size_x: f32,
     cell_size_y: f32,
+    line_thickness: f32,
 }
 
-
 impl Grid {
-    const LINE_WIDTH: f32 = 1.0;
-    const GRID_COLOR: Color = WHITE;
+    const GRID_COLOR: Color = Color::new(1.0, 1.0, 1.0, 0.4);
 
     const CELL_COLOR: Color = GREEN;
 
+    fn new(rows: usize) -> Self {
+        let cols = rows;
 
-    fn new(rows: usize, cols: usize) -> Self {
-        let screen_width = screen_width() - Self::LINE_WIDTH;
-        let screen_height = screen_height() - UI_OFFSET as f32 - Self::LINE_WIDTH;
+        let line_thickness = Grid::calculate_line_thickness(rows, cols);
+
+        let screen_width = screen_width() - line_thickness;
+        let screen_height = screen_height() - UI_OFFSET as f32 - line_thickness;
 
         let cell_size_x = screen_width / cols as f32;
         let cell_size_y = screen_height / rows as f32;
@@ -96,36 +161,52 @@ impl Grid {
             cols,
             cell_size_x,
             cell_size_y,
+            line_thickness,
         }
+    }
+
+    fn calculate_line_thickness(rows: usize, cols: usize) -> f32 {
+        let min_thickness = 0.0;
+        let max_thickness = 1.0;
+
+        let min_grid = 50.0;
+        let max_grid = 150.0;
+
+        let grid_size = cmp::max(rows, cols) as f32;
+
+        let mut line_thickness = max_thickness + ((min_thickness - max_thickness) / (max_grid - min_grid)) * (grid_size - min_grid);
+
+        line_thickness = line_thickness.clamp(min_thickness, max_thickness);
+        line_thickness
     }
 
     fn draw(&self) {
         // Draw vertical lines
-        let max_x = self.cols as f32 * self.cell_size_x + Grid::LINE_WIDTH;
-        let max_y = self.rows as f32 * self.cell_size_y + Grid::LINE_WIDTH;
+        let max_x = self.cols as f32 * self.cell_size_x + self.line_thickness;
+        let max_y = self.rows as f32 * self.cell_size_y + self.line_thickness;
 
         for x in 0..=self.cols {
-            let x_pos = (x as f32 * self.cell_size_x) + (Grid::LINE_WIDTH * 0.5);
+            let x_pos = (x as f32 * self.cell_size_x) + (self.line_thickness * 0.5);
 
             draw_line(
                 x_pos,
                 0.0,
                 x_pos,
                 max_y,
-                Grid::LINE_WIDTH,
+                self.line_thickness,
                 Grid::GRID_COLOR,
             );
         }
 
         // Draw horizontal lines
         for y in 0..=self.rows {
-            let y_pos = (y as f32 * self.cell_size_y) + (Grid::LINE_WIDTH * 0.5);
+            let y_pos = (y as f32 * self.cell_size_y) + (self.line_thickness * 0.5);
             draw_line(
                 0.0,
                 y_pos,
                 max_x,
                 y_pos,
-                Grid::LINE_WIDTH,
+                self.line_thickness,
                 Grid::GRID_COLOR,
             );
         }
@@ -141,15 +222,14 @@ impl Grid {
         let screen_coords = self.grid_to_screen(grid_x as f32, grid_y as f32);
 
         draw_rectangle(
-            screen_coords.x + Grid::LINE_WIDTH,
-            screen_coords.y + Grid::LINE_WIDTH,
-            self.cell_size_x - Grid::LINE_WIDTH,
-            self.cell_size_y - Grid::LINE_WIDTH,
+            screen_coords.x + self.line_thickness,
+            screen_coords.y + self.line_thickness,
+            self.cell_size_x - self.line_thickness,
+            self.cell_size_y - self.line_thickness,
             Self::CELL_COLOR,
         );
     }
 }
-
 
 fn create_cells(rows: usize, cols: usize) -> Vec<Cell> {
     let mut cells = Vec::with_capacity(rows * cols);
@@ -162,18 +242,32 @@ fn create_cells(rows: usize, cols: usize) -> Vec<Cell> {
     cells
 }
 
-fn count_alive_neighbors(cells: &Vec<Cell>, row: usize, col: usize, rows: usize, cols: usize) -> usize {
+fn count_alive_neighbors(
+    cells: &Vec<Cell>,
+    row: usize,
+    col: usize,
+    rows: usize,
+    cols: usize,
+) -> usize {
     let offsets = [
-        (-1, -1), (-1, 0), (-1, 1),
-        (0, -1), /* (this cell) */ (0, 1),
-        (1, -1), (1, 0), (1, 1)
+        (-1, -1),
+        (-1, 0),
+        (-1, 1),
+        (0, -1),
+        /* (this cell) */ (0, 1),
+        (1, -1),
+        (1, 0),
+        (1, 1),
     ];
 
-    offsets.iter().filter(|&&(dr, dc)| {
-        let nr = row.wrapping_add(dr as usize);
-        let nc = col.wrapping_add(dc as usize);
-        nr < rows && nc < cols && cells[(nr * cols) + nc].alive
-    }).count()
+    offsets
+        .iter()
+        .filter(|&&(dr, dc)| {
+            let nr = row.wrapping_add(dr as usize);
+            let nc = col.wrapping_add(dc as usize);
+            nr < rows && nc < cols && cells[(nr * cols) + nc].alive
+        })
+        .count()
 }
 
 /// A live cell dies if it has fewer than two live neighbors.
@@ -188,8 +282,8 @@ fn update_cells(cells: &mut Vec<Cell>, next_cells: &mut Vec<Cell>, rows: usize, 
 
             next_cells[idx].alive = match (cells[idx].alive, alive_neighbors) {
                 (true, 2) | (true, 3) => true, // survive
-                (false, 3) => true, // born
-                _ => false, // dies
+                (false, 3) => true,            // born
+                _ => false,                    // dies
             }
         }
     }
