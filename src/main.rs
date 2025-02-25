@@ -1,7 +1,7 @@
 use macroquad::hash;
 use macroquad::prelude::*;
 use macroquad::ui::{root_ui, widgets};
-use quad_sketch_core::config;
+use game_of_life_core::config;
 use std::cmp;
 
 const UI_OFFSET: f64 = 100.0;
@@ -55,7 +55,7 @@ async fn main() {
 
 
                             let mut new_grid_size = grid_size;
-                            widgets::Slider::new(hash!(), 25.0..250.0)
+                            widgets::Slider::new(hash!(), 25.0..550.0)
                                 .label("Grid Size")
                                 .ui(ui, &mut new_grid_size);
 
@@ -250,22 +250,17 @@ fn count_alive_neighbors(
     cols: usize,
 ) -> usize {
     let offsets = [
-        (-1, -1),
-        (-1, 0),
-        (-1, 1),
-        (0, -1),
-        /* (this cell) */ (0, 1),
-        (1, -1),
-        (1, 0),
-        (1, 1),
+        (-1, -1), (-1, 0), (-1, 1),
+        (0, -1), /* (this cell) */ (0, 1),
+        (1, -1), (1, 0), (1, 1),
     ];
 
     offsets
         .iter()
         .filter(|&&(dr, dc)| {
-            let nr = row.wrapping_add(dr as usize);
-            let nc = col.wrapping_add(dc as usize);
-            nr < rows && nc < cols && cells[(nr * cols) + nc].alive
+            let nr = (row as isize + dr + rows as isize) as usize % rows;
+            let nc = (col as isize + dc + cols as isize) as usize % cols;
+            cells[(nr * cols) + nc].alive
         })
         .count()
 }

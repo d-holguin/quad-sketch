@@ -1,5 +1,5 @@
 [package]
-name = "quad-sketch"
+name = "game-of-life"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,11 +7,11 @@ edition = "2021"
 
 [lib]
 src = "lib.rs"
-name = "quad_sketch_core"
+name = "game_of_life_core"
 
 [[bin]]
 path = "src/main.rs"
-name = "quad_sketch"
+name = "game_of_life"
 
 [dependencies]
 macroquad = "0.4.13"
