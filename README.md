@@ -1,7 +1,7 @@
 https://beltoforion.de/en/game_of_life/
 
 
-##### To make build wasm 
+##### To build wasm 
 ```bash
 cargo build --release --target wasm32-unknown-unknown
 
